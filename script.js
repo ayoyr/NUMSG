@@ -1,8 +1,7 @@
 // --- 読み込み確認用ログ ---
-console.log("Script Loaded: gemini-pro version");
+console.log("Script Loaded: Auto-Fallback version");
 
 // --- キャラクター設定 ---
-// imageフォルダに画像を入れたら、そのファイル名をここに記述します
 const CHARACTERS = [
     {
         id: 'mako',
@@ -20,7 +19,7 @@ const CHARACTERS = [
             画像を表示するためのトリガーになります。
             タグの例: 【normal】, 【shy】(恥じらい), 【excite】(興奮), 【climax】(絶頂)
         `,
-        // タグに対応する画像ファイル名
+        // タグに対応する画像ファイル名 (imageフォルダ内のファイル名)
         images: {
             'normal': '', 
             'shy': '',
@@ -28,7 +27,7 @@ const CHARACTERS = [
             'climax': ''
         }
     },
-    // 他のキャラクターもここに追加可能
+    // 他のキャラクター追加用
     { id: 'rio', name: 'りお', color: '#00bcd4', avatar: '', systemPrompt: '', images: {} }
 ];
 
@@ -39,7 +38,6 @@ let chatHistory = []; // 会話履歴
 document.addEventListener('DOMContentLoaded', () => {
     renderChatList();
     
-    // 送信ボタンイベント
     const sendBtn = document.getElementById('send-btn');
     const userInput = document.getElementById('user-input');
 
@@ -130,9 +128,8 @@ async function sendMessage() {
         const responseText = await callGeminiAPI();
         processAIResponse(responseText);
     } catch (e) {
-        console.error("送信エラー:", e);
-        // エラー内容を画面に表示してわかりやすくする
-        addMessageBubble(`エラーが発生しました: ${e.message}`, 'partner');
+        console.error("All models failed:", e);
+        addMessageBubble(`エラー: AIが応答できませんでした。(${e.message})`, 'partner');
     }
 }
 
@@ -144,50 +141,57 @@ function sendQuickReply(text) {
     }
 }
 
-// --- Gemini API連携 (修正版: gemini-pro固定) ---
+// --- Gemini API連携 (自動再試行ロジック) ---
 async function callGeminiAPI() {
-    // config.jsの読み込みチェック
     if (typeof CONFIG === 'undefined' || !CONFIG.GEMINI_API_KEY) {
-        throw new Error("config.js が読み込まれていないか、APIキーが設定されていません。");
+        throw new Error("APIキー未設定");
     }
 
-    // ★重要: ここでモデル名を 'gemini-pro' に固定しています
-    const modelName = 'gemini-pro';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${CONFIG.GEMINI_API_KEY}`;
-    
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: chatHistory
-            })
-        });
+    // 試行するモデルのリスト (優先順位順)
+    // 1. Flash (最新・高速) -> 2. Pro (安定) -> 3. 1.0 Pro (旧安定版)
+    const modelsToTry = [
+        'gemini-1.5-flash',
+        'gemini-1.5-pro',
+        'gemini-1.0-pro'
+    ];
 
-        const data = await response.json();
+    let lastError = null;
 
-        // エラーレスポンスのチェック (404などをここでキャッチ)
-        if (!response.ok) {
-            console.error("Gemini API Error Detail:", data);
-            throw new Error(data.error?.message || `API Error: ${response.status} ${response.statusText}`);
+    // 順番に試していくループ
+    for (const modelName of modelsToTry) {
+        console.log(`Trying model: ${modelName}...`);
+        try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${CONFIG.GEMINI_API_KEY}`;
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: chatHistory })
+            });
+
+            const data = await response.json();
+
+            // エラーなら例外を投げて次のモデルへ
+            if (!response.ok) {
+                throw new Error(data.error?.message || response.statusText);
+            }
+            if (!data.candidates || !data.candidates[0].content) {
+                throw new Error("No response content");
+            }
+
+            // 成功したらテキストを返す
+            console.log(`Success with ${modelName}`);
+            return data.candidates[0].content.parts[0].text;
+
+        } catch (error) {
+            console.warn(`Failed with ${modelName}:`, error);
+            lastError = error;
+            // ここでループが続き、次のモデルを試します
         }
-
-        // データ構造のチェック (undefinedエラーを防ぐ)
-        if (!data.candidates || data.candidates.length === 0) {
-            console.error("No candidates returned:", data);
-            throw new Error("AIからの応答が空でした。");
-        }
-
-        if (!data.candidates[0].content || !data.candidates[0].content.parts) {
-             console.error("Invalid content structure:", data);
-             throw new Error("AIからの応答形式が不正です。");
-        }
-
-        return data.candidates[0].content.parts[0].text;
-
-    } catch (error) {
-        throw error; // 上位のcatchブロックに投げる
     }
+
+    // 全モデル失敗した場合
+    throw lastError;
 }
 
 // --- AIの応答処理と画像表示 ---
@@ -196,7 +200,6 @@ function processAIResponse(text) {
 
     const char = CHARACTERS.find(c => c.id === currentChatId);
     
-    // タグ 【tag】 を検出して画像を表示するロジック
     let displayText = text;
     let imageToShow = null;
 
@@ -212,7 +215,7 @@ function processAIResponse(text) {
         }
     }
 
-    // 履歴に追加 (モデルの返答として保存)
+    // 履歴に追加
     chatHistory.push({ role: "model", parts: [{ text: text }] });
 
     addMessageBubble(displayText, 'partner', imageToShow);
@@ -229,7 +232,7 @@ function addMessageBubble(text, type, imageSrc = null) {
     const char = CHARACTERS.find(c => c.id === currentChatId);
     
     let html = '';
-    // パートナーの場合、アイコンを表示
+    // パートナーアイコン
     if (type === 'partner') {
         html += `<img class="avatar" src="${char.avatar}" style="width:30px;height:30px;margin-right:5px;">`;
     }
@@ -238,7 +241,6 @@ function addMessageBubble(text, type, imageSrc = null) {
     if (text) {
         html += `<div class="bubble">${text}</div>`;
     }
-    // 画像がある場合
     if (imageSrc) {
         html += `<img src="${imageSrc}" class="image-message">`;
     }
@@ -246,7 +248,5 @@ function addMessageBubble(text, type, imageSrc = null) {
 
     div.innerHTML = html;
     container.appendChild(div);
-    
-    // スクロール最下部へ
     container.scrollTop = container.scrollHeight;
 }
