@@ -38,21 +38,33 @@ document.addEventListener('DOMContentLoaded', () => {
     renderChatList();
     
     // 送信ボタンイベント
-    document.getElementById('send-btn').addEventListener('click', sendMessage);
-    document.getElementById('user-input').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') sendMessage();
-    });
+    const sendBtn = document.getElementById('send-btn');
+    const userInput = document.getElementById('user-input');
+
+    if (sendBtn) {
+        sendBtn.addEventListener('click', sendMessage);
+    }
+    if (userInput) {
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    }
 });
 
 // --- 画面遷移 ---
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(screenId).classList.add('active');
+    const target = document.getElementById(screenId);
+    if (target) {
+        target.classList.add('active');
+    }
 }
 
 // --- リスト表示 ---
 function renderChatList() {
     const container = document.getElementById('chat-list-container');
+    if (!container) return;
+
     container.innerHTML = '';
     
     CHARACTERS.forEach(char => {
@@ -79,11 +91,20 @@ function openChat(charId) {
     // ヘッダー更新
     document.getElementById('chat-title').innerText = char.name;
     document.getElementById('profile-title').innerText = char.name;
-    document.getElementById('profile-avatar').style.backgroundColor = char.avatar ? 'transparent' : '#000';
-    // 履歴リセット（必要に応じてlocalStorage保存などを実装可）
-    document.getElementById('message-container').innerHTML = '';
+    const profileAvatar = document.getElementById('profile-avatar');
+    if (profileAvatar) {
+        profileAvatar.style.backgroundColor = char.avatar ? 'transparent' : '#000';
+    }
+
+    // 履歴リセット
+    const msgContainer = document.getElementById('message-container');
+    if (msgContainer) {
+        msgContainer.innerHTML = '';
+    }
+    
+    // システムプロンプトを履歴の最初にセット
     chatHistory = [
-        { role: "user", parts: [{ text: char.systemPrompt }] } // システムプロンプトを履歴の最初に仕込む
+        { role: "user", parts: [{ text: char.systemPrompt }] } 
     ];
 
     showScreen('screen-chat');
@@ -102,38 +123,62 @@ async function sendMessage() {
     // 履歴に追加
     chatHistory.push({ role: "user", parts: [{ text: text }] });
 
-    // AIの応答待ち表示（簡易的）
-    // loading...
-
-    // Gemini API呼び出し
+    // API呼び出し
     try {
         const responseText = await callGeminiAPI();
         processAIResponse(responseText);
     } catch (e) {
-        console.error(e);
-        addMessageBubble("エラーが発生しました", 'partner');
+        console.error("送信エラー:", e);
+        addMessageBubble("通信エラーが発生しました。コンソールを確認してください。", 'partner');
     }
 }
 
 function sendQuickReply(text) {
-    document.getElementById('user-input').value = text;
-    sendMessage();
+    const input = document.getElementById('user-input');
+    if (input) {
+        input.value = text;
+        sendMessage();
+    }
 }
 
-// --- Gemini API連携 ---
+// --- Gemini API連携 (修正版) ---
 async function callGeminiAPI() {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${CONFIG.GEMINI_API_KEY}`;
-    
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            contents: chatHistory
-        })
-    });
+    if (!CONFIG || !CONFIG.GEMINI_API_KEY) {
+        throw new Error("APIキーが設定されていません。config.jsを確認してください。");
+    }
 
-    const data = await response.json();
-    return data.candidates[0].content.parts[0].text;
+    // モデル名指定 (利用可能なモデル名: gemini-1.5-flash, gemini-pro など)
+    const modelName = 'gemini-1.5-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${CONFIG.GEMINI_API_KEY}`;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: chatHistory
+            })
+        });
+
+        const data = await response.json();
+
+        // エラーレスポンスのチェック
+        if (!response.ok) {
+            console.error("Gemini API Error Detail:", data);
+            throw new Error(`API Error: ${data.error?.message || response.statusText}`);
+        }
+
+        // データ構造のチェック
+        if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+            console.error("Unexpected API Response format:", data);
+            throw new Error("予期しないレスポンス形式です。");
+        }
+
+        return data.candidates[0].content.parts[0].text;
+
+    } catch (error) {
+        throw error; // 上位のcatchブロックに投げる
+    }
 }
 
 // --- AIの応答処理と画像表示 ---
@@ -151,12 +196,12 @@ function processAIResponse(text) {
         displayText = text.replace(match[0], ''); // タグを本文から消す
         
         // タグに対応する画像があればセット
-        if (char.images[tag]) {
+        if (char.images && char.images[tag]) {
             imageToShow = char.images[tag];
         }
     }
 
-    // 履歴に追加（タグ付きのまま保存するか、タグなしにするかは調整可能。ここではAIが文脈を覚えるためにそのまま）
+    // 履歴に追加 (モデルの返答として保存)
     chatHistory.push({ role: "model", parts: [{ text: text }] });
 
     addMessageBubble(displayText, 'partner', imageToShow);
@@ -165,6 +210,8 @@ function processAIResponse(text) {
 // --- 吹き出し追加 ---
 function addMessageBubble(text, type, imageSrc = null) {
     const container = document.getElementById('message-container');
+    if (!container) return;
+
     const div = document.createElement('div');
     div.className = `message ${type}`;
 
