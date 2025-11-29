@@ -1,0 +1,243 @@
+:root {
+    --primary-color: #000;
+    --bg-color: #fff;
+    --chat-bg-user: #e2cba4; /* 画像に近いベージュ色 */
+    --chat-bg-partner: #f0f0f0;
+    --border-color: #ddd;
+    --header-height: 60px;
+    --footer-height: 100px; /* 入力欄+ボタンエリア */
+}
+
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg-color);
+    overflow: hidden; /* スクロールは内部divで行う */
+}
+
+/* 画面切り替えの仕組み */
+.screen {
+    display: none;
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+}
+.screen.active {
+    display: block;
+}
+
+/* 固定ヘッダー */
+.fixed-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: var(--header-height);
+    background: #fff;
+    border-bottom: 1px solid transparent; /* 必要なら線を入れる */
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+    box-sizing: border-box;
+}
+
+.header-content {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.chat-header {
+    justify-content: space-between;
+}
+
+.header-content h2 {
+    font-size: 18px;
+    margin: 0;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.header-icons {
+    display: flex;
+    gap: 15px;
+}
+
+/* スクロールエリア */
+.scroll-content {
+    height: 100vh;
+    overflow-y: auto;
+    padding-top: var(--header-height);
+    padding-bottom: var(--footer-height);
+    box-sizing: border-box;
+}
+
+/* トーク一覧 */
+.chat-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #f5f5f5;
+    cursor: pointer;
+}
+.avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: #000; /* 画像がない場合の黒丸 */
+    margin-right: 15px;
+    border: 2px solid transparent; /* メンバーカラー用 */
+    object-fit: cover;
+}
+.chat-info {
+    flex: 1;
+}
+.chat-name {
+    font-weight: bold;
+    font-size: 16px;
+}
+.chat-badge {
+    color: #888;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* チャット画面 */
+.chat-content {
+    padding: 20px 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding-bottom: 140px; /* 入力欄とかぶらないように */
+}
+
+.message {
+    display: flex;
+    align-items: flex-end;
+    max-width: 80%;
+}
+.message.partner {
+    align-self: flex-start;
+}
+.message.user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.bubble {
+    padding: 10px 15px;
+    border-radius: 20px;
+    font-size: 15px;
+    line-height: 1.4;
+    position: relative;
+}
+.message.partner .bubble {
+    background-color: var(--chat-bg-partner);
+    border-bottom-left-radius: 5px;
+    margin-left: 10px;
+}
+.message.user .bubble {
+    background-color: var(--chat-bg-user);
+    border-bottom-right-radius: 5px;
+}
+
+.image-message {
+    max-width: 200px;
+    border-radius: 15px;
+    margin-top: 5px;
+}
+
+/* 固定フッター（入力） */
+.fixed-footer-input {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background: #fff;
+    padding: 10px;
+    box-sizing: border-box;
+    z-index: 100;
+}
+
+.quick-replies {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    margin-bottom: 5px;
+}
+.quick-replies button {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 5px 15px;
+    font-size: 12px;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.input-area {
+    display: flex;
+    align-items: center;
+    background: #f0f0f0;
+    border-radius: 25px;
+    padding: 5px 15px;
+}
+.input-area input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 10px;
+    outline: none;
+    font-size: 16px;
+}
+.send-icon {
+    border: none;
+    background: none;
+    color: #cda868; /* アイコンの色 */
+    cursor: pointer;
+}
+
+/* プロフィール画面 */
+.profile-content {
+    text-align: center;
+    padding: 20px;
+}
+.avatar-large {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: #000;
+    margin: 0 auto 20px;
+}
+.profile-section {
+    text-align: left;
+    margin-bottom: 30px;
+}
+.profile-section h3 {
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 10px;
+}
+.profile-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    font-size: 14px;
+    font-weight: bold;
+}
+.tag {
+    border: 1px solid #ccc;
+    border-radius: 15px;
+    padding: 5px 15px;
+    font-weight: normal;
+    font-size: 13px;
+    margin-left: 5px;
+    display: inline-block;
+}
