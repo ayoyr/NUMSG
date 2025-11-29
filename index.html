@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roleplay Chat</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+
+    <div id="screen-list" class="screen active">
+        <header class="fixed-header">
+            <div class="header-content">
+                <h2>トーク</h2>
+            </div>
+        </header>
+        
+        <div class="scroll-content">
+            <div id="chat-list-container"></div>
+        </div>
+
+        <nav class="fixed-footer-nav">
+            <div class="nav-item"><span class="material-icons">menu</span><br>設定</div>
+            <div class="nav-item active"><span class="material-icons">chat_bubble_outline</span><br>トーク</div>
+            <div class="nav-item"><span class="material-icons">person_outline</span><br>プロフィール</div>
+        </nav>
+    </div>
+
+    <div id="screen-chat" class="screen">
+        <header class="fixed-header">
+            <div class="header-content chat-header">
+                <span class="material-icons back-btn" onclick="showScreen('screen-list')">arrow_back_ios</span>
+                <h2 id="chat-title">マコ</h2>
+                <div class="header-icons">
+                    <span class="material-icons" onclick="showScreen('screen-profile')">edit</span>
+                    <span class="material-icons">menu</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="scroll-content chat-content" id="message-container">
+            </div>
+
+        <footer class="fixed-footer-input">
+            <div class="quick-replies">
+                <button onclick="sendQuickReply('気持ちいい？')">気持ちいい？</button>
+                <button onclick="sendQuickReply('もっと激しく')">もっと激しく</button>
+                <button onclick="sendQuickReply('大好きだよ')">大好きだよ</button>
+            </div>
+            <div class="input-area">
+                <input type="text" id="user-input" placeholder="メッセージを入力...">
+                <button id="send-btn" class="send-icon">
+                    <span class="material-icons">send</span>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <div id="screen-profile" class="screen">
+        <header class="fixed-header">
+            <div class="header-content chat-header">
+                <span class="material-icons back-btn" onclick="showScreen('screen-chat')">arrow_back_ios</span>
+                <h2 id="profile-title">マコ</h2>
+            </div>
+        </header>
+
+        <div class="scroll-content profile-content">
+            <div class="profile-header">
+                <div class="avatar-large" id="profile-avatar"></div>
+            </div>
+            
+            <div class="profile-section">
+                <h3>基本設定</h3>
+                <div class="profile-row"><span>生年月日</span> <span class="tag">2001年 4月 4日</span></div>
+                <div class="profile-row"><span>メンバーカラー</span> <span class="tag">オレンジ</span></div>
+                <div class="profile-row"><span>性格</span> <div><span class="tag">天然</span> <span class="tag">しっかり者</span></div></div>
+            </div>
+
+            <div class="profile-section">
+                <h3>性的設定</h3>
+                <div class="profile-row"><span>胸のサイズ</span> <span class="tag">C カップ</span></div>
+                <div class="profile-row"><span>感度</span> <span class="tag">すぐイッちゃう</span></div>
+                </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
