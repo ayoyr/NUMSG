@@ -1,5 +1,5 @@
 // --- 読み込み確認用ログ ---
-console.log("Script Loaded: Auto-Fallback version");
+console.log("Script Loaded: v1.5-flash priority");
 
 // --- キャラクター設定 ---
 const CHARACTERS = [
@@ -129,7 +129,7 @@ async function sendMessage() {
         processAIResponse(responseText);
     } catch (e) {
         console.error("All models failed:", e);
-        addMessageBubble(`エラー: AIが応答できませんでした。(${e.message})`, 'partner');
+        addMessageBubble(`通信エラー: ${e.message}`, 'partner');
     }
 }
 
@@ -141,25 +141,24 @@ function sendQuickReply(text) {
     }
 }
 
-// --- Gemini API連携 (自動再試行ロジック) ---
+// --- Gemini API連携 (自動再試行・最新モデル優先) ---
 async function callGeminiAPI() {
     if (typeof CONFIG === 'undefined' || !CONFIG.GEMINI_API_KEY) {
         throw new Error("APIキー未設定");
     }
 
-    // 試行するモデルのリスト (優先順位順)
-    // 1. Flash (最新・高速) -> 2. Pro (安定) -> 3. 1.0 Pro (旧安定版)
+    // ★修正点: 最新のFlashモデルを最優先にし、古いgemini-proは除外しました
     const modelsToTry = [
         'gemini-1.5-flash',
-        'gemini-1.5-pro',
-        'gemini-1.0-pro'
+        'gemini-1.5-flash-latest',
+        'gemini-1.5-pro'
     ];
 
     let lastError = null;
 
     // 順番に試していくループ
     for (const modelName of modelsToTry) {
-        console.log(`Trying model: ${modelName}...`);
+        // console.log(`Trying model: ${modelName}...`); // デバッグ用
         try {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${CONFIG.GEMINI_API_KEY}`;
             
@@ -173,14 +172,15 @@ async function callGeminiAPI() {
 
             // エラーなら例外を投げて次のモデルへ
             if (!response.ok) {
+                // モデルが見つからない等のエラーはここでキャッチして次へ
                 throw new Error(data.error?.message || response.statusText);
             }
             if (!data.candidates || !data.candidates[0].content) {
                 throw new Error("No response content");
             }
 
-            // 成功したらテキストを返す
-            console.log(`Success with ${modelName}`);
+            // 成功したらループを抜けて値を返す
+            console.log(`Connected successfully with: ${modelName}`);
             return data.candidates[0].content.parts[0].text;
 
         } catch (error) {
@@ -191,7 +191,7 @@ async function callGeminiAPI() {
     }
 
     // 全モデル失敗した場合
-    throw lastError;
+    throw new Error(`全モデルで接続に失敗しました。詳細: ${lastError?.message}`);
 }
 
 // --- AIの応答処理と画像表示 ---
