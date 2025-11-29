@@ -1,13 +1,15 @@
+// --- 読み込み確認用ログ ---
+console.log("Script Loaded: gemini-pro version");
+
 // --- キャラクター設定 ---
 // imageフォルダに画像を入れたら、そのファイル名をここに記述します
-// image/mako_normal.png, image/mako_shy.png などを想定
 const CHARACTERS = [
     {
         id: 'mako',
         name: 'マコ',
         color: '#ff9800', // オレンジ
         avatar: '', // アイコン画像のパス（空なら黒丸）
-        // Geminiへのシステムプロンプト（ここで性格や状況を設定）
+        // Geminiへのシステムプロンプト
         systemPrompt: `
             あなたは「マコ」という20代前半の女性です。
             ユーザーとは親密な関係（恋人）です。
@@ -130,7 +132,7 @@ async function sendMessage() {
     } catch (e) {
         console.error("送信エラー:", e);
         // エラー内容を画面に表示してわかりやすくする
-        addMessageBubble(`エラー: ${e.message}`, 'partner');
+        addMessageBubble(`エラーが発生しました: ${e.message}`, 'partner');
     }
 }
 
@@ -142,13 +144,14 @@ function sendQuickReply(text) {
     }
 }
 
-// --- Gemini API連携 (修正版) ---
+// --- Gemini API連携 (修正版: gemini-pro固定) ---
 async function callGeminiAPI() {
+    // config.jsの読み込みチェック
     if (typeof CONFIG === 'undefined' || !CONFIG.GEMINI_API_KEY) {
         throw new Error("config.js が読み込まれていないか、APIキーが設定されていません。");
     }
 
-    // ★重要: モデル名を 'gemini-pro' に変更しました（最も安定しているモデル）
+    // ★重要: ここでモデル名を 'gemini-pro' に固定しています
     const modelName = 'gemini-pro';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${CONFIG.GEMINI_API_KEY}`;
     
