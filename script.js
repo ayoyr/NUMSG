@@ -129,7 +129,8 @@ async function sendMessage() {
         processAIResponse(responseText);
     } catch (e) {
         console.error("送信エラー:", e);
-        addMessageBubble("通信エラーが発生しました。コンソールを確認してください。", 'partner');
+        // エラー内容を画面に表示してわかりやすくする
+        addMessageBubble(`エラー: ${e.message}`, 'partner');
     }
 }
 
@@ -143,12 +144,12 @@ function sendQuickReply(text) {
 
 // --- Gemini API連携 (修正版) ---
 async function callGeminiAPI() {
-    if (!CONFIG || !CONFIG.GEMINI_API_KEY) {
-        throw new Error("APIキーが設定されていません。config.jsを確認してください。");
+    if (typeof CONFIG === 'undefined' || !CONFIG.GEMINI_API_KEY) {
+        throw new Error("config.js が読み込まれていないか、APIキーが設定されていません。");
     }
 
-    // モデル名指定 (利用可能なモデル名: gemini-1.5-flash, gemini-pro など)
-    const modelName = 'gemini-1.5-flash';
+    // ★重要: モデル名を 'gemini-pro' に変更しました（最も安定しているモデル）
+    const modelName = 'gemini-pro';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${CONFIG.GEMINI_API_KEY}`;
     
     try {
@@ -162,16 +163,21 @@ async function callGeminiAPI() {
 
         const data = await response.json();
 
-        // エラーレスポンスのチェック
+        // エラーレスポンスのチェック (404などをここでキャッチ)
         if (!response.ok) {
             console.error("Gemini API Error Detail:", data);
-            throw new Error(`API Error: ${data.error?.message || response.statusText}`);
+            throw new Error(data.error?.message || `API Error: ${response.status} ${response.statusText}`);
         }
 
-        // データ構造のチェック
-        if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-            console.error("Unexpected API Response format:", data);
-            throw new Error("予期しないレスポンス形式です。");
+        // データ構造のチェック (undefinedエラーを防ぐ)
+        if (!data.candidates || data.candidates.length === 0) {
+            console.error("No candidates returned:", data);
+            throw new Error("AIからの応答が空でした。");
+        }
+
+        if (!data.candidates[0].content || !data.candidates[0].content.parts) {
+             console.error("Invalid content structure:", data);
+             throw new Error("AIからの応答形式が不正です。");
         }
 
         return data.candidates[0].content.parts[0].text;
@@ -183,6 +189,8 @@ async function callGeminiAPI() {
 
 // --- AIの応答処理と画像表示 ---
 function processAIResponse(text) {
+    if (!text) return;
+
     const char = CHARACTERS.find(c => c.id === currentChatId);
     
     // タグ 【tag】 を検出して画像を表示するロジック
